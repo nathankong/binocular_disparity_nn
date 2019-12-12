@@ -1,4 +1,4 @@
-## Reproducing Results from Goncalves and Welchmann, 2017
+## Reproducing Results from Goncalves and Welchman, 2017
 
 ### First, setup virtual environment and install requirements
 ```
