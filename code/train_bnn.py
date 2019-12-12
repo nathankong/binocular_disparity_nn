@@ -23,6 +23,7 @@ def train_step(
     for i, (data, labels) in enumerate(train_loader):
         data, labels = data.to(device), labels.to(device)
 
+        # Reset gradients
         optimizer.zero_grad()
 
         # Forward propagation
@@ -32,6 +33,12 @@ def train_step(
         # Backward propagation
         loss.backward()
         optimizer.step()
+
+        ## DEBUG MODE
+        #print(model.simple_unit[0].weight.grad.size(), model.simple_unit[0].weight.grad)
+        print(model.simple_unit[0].bias.grad.size(), model.simple_unit[0].bias.grad)
+        #print(model.complex_unit[0].weight.grad)
+        print(predictions)
 
         accuracy = compute_accuracy(
             predictions,
@@ -44,13 +51,13 @@ def train_step(
 
     return losses, accuracies 
 
-def test_step(model, test_loader, loss_func, device):
+def val_or_test_step(model, loader, loss_func, device):
     losses = list()
     accuracies = list()
 
     model.eval()
     with torch.no_grad():
-        for i, (data, labels) in enumerate(test_loader):
+        for i, (data, labels) in enumerate(loader):
             data, labels = data.to(device), labels.to(device)
             predictions = model(data)
 
@@ -67,11 +74,6 @@ def test_step(model, test_loader, loss_func, device):
 
     return losses, accuracies
 
-def val_step(val_loader):
-    # TODO
-    model.eval()
-    pass
-
 def train(train_params, device, verbose=True):
     # Data loaders
     train_loader, test_loader, val_loader = acquire_data_loaders(
@@ -84,16 +86,18 @@ def train(train_params, device, verbose=True):
     m = BinocularNetwork(
         n_filters=train_params["num_kernels"],
         k_size=train_params["kernel_size"],
-        input_size=train_params["img_size"]
+        input_size=train_params["img_size"],
+        init_gabors=True
     ).to(device)
 
     # Loss function
-    loss_func = nn.CrossEntropyLoss(reduction="mean")
-    #loss_func = nn.BCELoss(reduction="mean")
+    loss_func = nn.CrossEntropyLoss(reduction="sum")
+    #loss_func = nn.BCELoss(reduction="sum")
+    #loss_func = nn.NLLLoss(reduction="sum")
 
     # Optimizer
-    #optimizer = optim.SGD(m.parameters(), lr=train_params["learning_rate"])
-    optimizer = optim.Adam(m.parameters(), lr=train_params["learning_rate"])
+    optimizer = optim.SGD(m.parameters(), lr=train_params["learning_rate"])
+    #optimizer = optim.Adam(m.parameters(), lr=train_params["learning_rate"])
 
     # Do training
     for epoch_idx in range(train_params["num_epochs"]):
@@ -107,7 +111,7 @@ def train(train_params, device, verbose=True):
         )
 
         if verbose:
-            print("[Epoch {}/{}] Train Loss: {:.4f}; Acc.: {:.4f}"\
+            print("[Epoch {}/{}] Train Loss: {:.6f}; Acc.: {:.6f}"\
                 .format(
                     epoch_idx+1,
                     train_params["num_epochs"],
@@ -115,27 +119,27 @@ def train(train_params, device, verbose=True):
                 )
             )
 
-        # Test step every 10 epochs
+        # Validation step every 10 epochs
         if (epoch_idx+1) % 10 == 0:
-            test_losses, test_accs = test_step(
+            val_losses, val_accs = val_or_test_step(
                 m,
-                test_loader,
+                val_loader,
                 loss_func,
                 device
             )
 
             if verbose:
-                print("[Epoch {}/{}] Test Loss: {:.4f}; Acc.: {:.4f}"\
+                print("[Epoch {}/{}] Test Loss: {:.6f}; Acc.: {:.6f}"\
                     .format(
                         epoch_idx+1,
                         train_params["num_epochs"],
-                        np.mean(test_losses), np.mean(test_accs)
+                        np.mean(val_losses), np.mean(val_accs)
                     )
                 )
 
         sys.stdout.flush()
 
-        # Validation step (TODO)
+        # Test step (TODO)
         # ...
         # ...
         # ...
@@ -151,7 +155,7 @@ if __name__ == "__main__":
     parser.add_argument('--numkernels', type=int, default=28)
     parser.add_argument('--kernelsize', type=int, default=19)
     parser.add_argument('--imagesize', type=int, default=30)
-    parser.add_argument('--batchsize', type=int, default=200)
+    parser.add_argument('--batchsize', type=int, default=20)
     parser.add_argument('--numepochs', type=int, default=1000)
     parser.add_argument('--lr', type=float, default=0.001)
     args = parser.parse_args()
