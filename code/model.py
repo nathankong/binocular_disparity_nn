@@ -27,17 +27,20 @@ class BinocularNetwork(nn.Module):
         self.complex_unit = nn.Sequential(
             nn.Linear(n_units, 2, bias=True)
         )
-        #self.log_softmax = torch.nn.LogSoftmax(dim=1)
+        self.log_softmax = torch.nn.LogSoftmax(dim=1)
 
         if not init_gabors:
             self.simple_unit.apply(self.init_weights)
         else:
+            print "Initialize Gabors for simple units."
             self.simple_unit.apply(self.init_gabors)
 
-        self.complex_unit.apply(self.init_zeros)
+        print "Initialize complex units."
+        #self.complex_unit.apply(self.init_zeros)
+        self.complex_unit.apply(self.init_weights)
 
     def init_weights(self, m):
-        if type(m) == nn.Conv2d:
+        if type(m) == nn.Conv2d or type(m) == nn.Linear:
             print m
             nn.init.xavier_uniform_(m.weight)
 
@@ -76,7 +79,7 @@ class BinocularNetwork(nn.Module):
         x = self.simple_unit(x)
         x = torch.flatten(x, start_dim=1) 
         x = self.complex_unit(x)
-        #x = self.log_softmax(x)
+        x = self.log_softmax(x)
         return x
 
 if __name__ == "__main__":

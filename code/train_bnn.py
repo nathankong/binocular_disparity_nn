@@ -18,10 +18,12 @@ def train_step(
 ):
     losses = list()
     accuracies = list()
+    total_samples = 0.
 
     model.train()
     for i, (data, labels) in enumerate(train_loader):
         data, labels = data.to(device), labels.to(device)
+        total_samples += data.shape[0]
 
         # Reset gradients
         optimizer.zero_grad()
@@ -36,10 +38,11 @@ def train_step(
 
         ## DEBUG MODE
         #print(model.simple_unit[0].weight.grad.size(), model.simple_unit[0].weight.grad)
-        print(model.simple_unit[0].bias.grad.size(), model.simple_unit[0].bias.grad)
+        #print(model.simple_unit[0].bias.grad.size(), model.simple_unit[0].bias.grad)
         #print(model.complex_unit[0].weight.grad)
-        print(predictions)
+        #print(predictions)
 
+        # TODO: CLEAN THIS UP LATER (RENAME THE FUNCTION)
         accuracy = compute_accuracy(
             predictions,
             labels,
@@ -49,20 +52,23 @@ def train_step(
         losses.append(loss.item())
         accuracies.append(accuracy)
 
-    return losses, accuracies 
+    return losses, accuracies, total_samples
 
 def val_or_test_step(model, loader, loss_func, device):
     losses = list()
     accuracies = list()
+    total_samples = 0.
 
     model.eval()
     with torch.no_grad():
         for i, (data, labels) in enumerate(loader):
             data, labels = data.to(device), labels.to(device)
-            predictions = model(data)
+            total_samples += data.shape[0]
 
+            predictions = model(data)
             loss = loss_func(predictions, labels)
 
+            # TODO: CLEAN THIS UP LATER (RENAME THE FUNCTION)
             accuracy = compute_accuracy(
                 predictions,
                 labels,
@@ -72,7 +78,7 @@ def val_or_test_step(model, loader, loss_func, device):
             losses.append(loss.item())
             accuracies.append(accuracy)
 
-    return losses, accuracies
+    return losses, accuracies, total_samples
 
 def train(train_params, device, verbose=True):
     # Data loaders
@@ -91,9 +97,9 @@ def train(train_params, device, verbose=True):
     ).to(device)
 
     # Loss function
-    loss_func = nn.CrossEntropyLoss(reduction="sum")
+    #loss_func = nn.CrossEntropyLoss(reduction="sum")
     #loss_func = nn.BCELoss(reduction="sum")
-    #loss_func = nn.NLLLoss(reduction="sum")
+    loss_func = nn.NLLLoss(reduction="sum")
 
     # Optimizer
     optimizer = optim.SGD(m.parameters(), lr=train_params["learning_rate"])
@@ -102,7 +108,7 @@ def train(train_params, device, verbose=True):
     # Do training
     for epoch_idx in range(train_params["num_epochs"]):
         # Train step
-        train_losses, train_accs = train_step(
+        train_losses, correct, total_samples = train_step(
             m,
             train_loader,
             optimizer,
@@ -115,13 +121,13 @@ def train(train_params, device, verbose=True):
                 .format(
                     epoch_idx+1,
                     train_params["num_epochs"],
-                    np.mean(train_losses), np.mean(train_accs)
+                    np.sum(train_losses) / total_samples, np.sum(correct) / total_samples
                 )
             )
 
         # Validation step every 10 epochs
         if (epoch_idx+1) % 10 == 0:
-            val_losses, val_accs = val_or_test_step(
+            val_losses, correct, total_samples = val_or_test_step(
                 m,
                 val_loader,
                 loss_func,
@@ -133,7 +139,7 @@ def train(train_params, device, verbose=True):
                     .format(
                         epoch_idx+1,
                         train_params["num_epochs"],
-                        np.mean(val_losses), np.mean(val_accs)
+                        np.sum(val_losses) / total_samples, np.sum(correct) / total_samples
                     )
                 )
 
@@ -155,7 +161,7 @@ if __name__ == "__main__":
     parser.add_argument('--numkernels', type=int, default=28)
     parser.add_argument('--kernelsize', type=int, default=19)
     parser.add_argument('--imagesize', type=int, default=30)
-    parser.add_argument('--batchsize', type=int, default=20)
+    parser.add_argument('--batchsize', type=int, default=500)
     parser.add_argument('--numepochs', type=int, default=1000)
     parser.add_argument('--lr', type=float, default=0.001)
     args = parser.parse_args()

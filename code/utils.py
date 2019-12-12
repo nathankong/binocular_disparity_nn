@@ -75,7 +75,7 @@ def compute_accuracy(predictions, labels, total_samples):
 
     preds = predictions.argmax(dim=1, keepdim=True)
     correct = preds.eq(labels.view_as(preds)).sum().item()
-    return correct / float(total_samples)
+    return correct# / float(total_samples)
 
 if __name__ == "__main__":
     im_dir = "/mnt/fs5/nclkong/datasets/bnn_dataset/"
