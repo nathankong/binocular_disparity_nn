@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 
 import torch
@@ -105,23 +106,34 @@ def train(train_params, device, verbose=True):
             device
         )
 
-        # Test step
-        test_losses, test_accs = test_step(
-            m,
-            test_loader,
-            loss_func,
-            device
-        )
-
         if verbose:
-            print("[Epoch {}/{}] Train Loss/Acc.: {:.4f}/{:.4f}; Test Loss/Acc.: {:.4f}/{:.4f}"\
+            print("[Epoch {}/{}] Train Loss: {:.4f}; Acc.: {:.4f}"\
                 .format(
                     epoch_idx+1,
                     train_params["num_epochs"],
-                    np.mean(train_losses), np.mean(train_accs),
-                    np.mean(test_losses), np.mean(test_accs)
+                    np.mean(train_losses), np.mean(train_accs)
                 )
             )
+
+        # Test step every 10 epochs
+        if (epoch_idx+1) % 10 == 0:
+            test_losses, test_accs = test_step(
+                m,
+                test_loader,
+                loss_func,
+                device
+            )
+
+            if verbose:
+                print("[Epoch {}/{}] Test Loss: {:.4f}; Acc.: {:.4f}"\
+                    .format(
+                        epoch_idx+1,
+                        train_params["num_epochs"],
+                        np.mean(test_losses), np.mean(test_accs)
+                    )
+                )
+
+        sys.stdout.flush()
 
         # Validation step (TODO)
         # ...
