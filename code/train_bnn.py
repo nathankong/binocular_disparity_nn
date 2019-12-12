@@ -8,21 +8,8 @@ torch.manual_seed(0)
 from model import BinocularNetwork
 from utils import acquire_data_loaders, compute_accuracy
 
-# Load model
-#model = BinocularNetwork(
-#    n_filters=train_params["num_kernels"],
-#    k_size=train_params["kernel_size"],
-#    input_size=train_params["img_size"]
-#).to(device)
-
-# Load model
-model = BinocularNetwork(
-    n_filters=28,
-    k_size=19,
-    input_size=30
-).to(torch.device("cuda:7"))
-
 def train_step(
+    model,
     train_loader,
     optimizer,
     loss_func,
@@ -56,7 +43,7 @@ def train_step(
 
     return losses, accuracies 
 
-def test_step(test_loader, loss_func, device):
+def test_step(model, test_loader, loss_func, device):
     losses = list()
     accuracies = list()
 
@@ -92,18 +79,26 @@ def train(train_params, device, verbose=True):
         device
     )
 
+    # Load model
+    m = BinocularNetwork(
+        n_filters=train_params["num_kernels"],
+        k_size=train_params["kernel_size"],
+        input_size=train_params["img_size"]
+    ).to(device)
+
     # Loss function
     loss_func = nn.CrossEntropyLoss(reduction="mean")
     #loss_func = nn.BCELoss(reduction="mean")
 
     # Optimizer
     #optimizer = optim.SGD(m.parameters(), lr=train_params["learning_rate"])
-    optimizer = optim.Adam(model.parameters(), lr=train_params["learning_rate"])
+    optimizer = optim.Adam(m.parameters(), lr=train_params["learning_rate"])
 
     # Do training
     for epoch_idx in range(train_params["num_epochs"]):
         # Train step
         train_losses, train_accs = train_step(
+            m,
             train_loader,
             optimizer,
             loss_func,
@@ -112,6 +107,7 @@ def train(train_params, device, verbose=True):
 
         # Test step
         test_losses, test_accs = test_step(
+            m,
             test_loader,
             loss_func,
             device
