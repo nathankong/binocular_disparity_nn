@@ -45,6 +45,7 @@ class BinocularNetwork(nn.Module):
         if type(m) == nn.Conv2d or type(m) == nn.Linear:
             print m
             nn.init.xavier_uniform_(m.weight)
+            np.save("initial_kernels_xavier.npy", m.weight.data.numpy())
 
     def _init_zeros(self, m):
         if type(m) == nn.Linear:
@@ -71,7 +72,7 @@ class BinocularNetwork(nn.Module):
                 k[i, 0, :, :] = k[i, 0, :, :] / np.sum(np.fabs(k[i, 0, :, :]))
                 k[i, 1, :, :] = k[i, 0, :, :]
                 i += 1
-            np.save("initial_kernels.npy", k)
+            np.save("initial_kernels_gabor.npy", k)
 
             m.weight = torch.nn.Parameter(torch.from_numpy(k).float(), requires_grad=True)
             m.bias.data.fill_(0.)

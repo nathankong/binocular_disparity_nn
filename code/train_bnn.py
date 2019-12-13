@@ -151,8 +151,7 @@ if __name__ == "__main__":
     parser.add_argument('--batch-size', type=int, default=200)
     parser.add_argument('--num-epochs', type=int, default=1000)
     parser.add_argument('--lr', type=float, default=0.0001)
-    parser.add_argument('--init-gabors', dest='init_gabors', action='store_true')
-    parser.set_defaults(init_gabor=False)
+    parser.add_argument('--init-gabors', type=bool, default=False)
     args = parser.parse_args()
 
     # Use GPU or CPU
@@ -172,7 +171,7 @@ if __name__ == "__main__":
     train_params["batch_size"] = int(args.batch_size)
     train_params["num_epochs"] = int(args.num_epochs)
     train_params["learning_rate"] = float(args.lr)
-    train_params["init_gabors"] = args.init_gabors
+    train_params["init_gabors"] = bool(args.init_gabors)
     print "Training parameters:", train_params
 
     # Do the training
