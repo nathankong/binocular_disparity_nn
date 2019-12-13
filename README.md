@@ -1,7 +1,8 @@
 ## Reproducing Results from Goncalves and Welchman, 2017
 
-### First, setup virtual environment and install requirements
+### First, setup virtual environment and install requirements after the repository is cloned
 ```
+cd binocular_disparity_nn
 virtualenv disp
 source disp/bin/activate
 pip install -r requirements.txt
