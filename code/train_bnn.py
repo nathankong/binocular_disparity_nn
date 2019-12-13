@@ -102,8 +102,8 @@ def train(train_params, device, verbose=True):
     loss_func = nn.NLLLoss(reduction="sum")
 
     # Optimizer
-    optimizer = optim.SGD(m.parameters(), lr=train_params["learning_rate"])
-    #optimizer = optim.Adam(m.parameters(), lr=train_params["learning_rate"])
+    #optimizer = optim.SGD(m.parameters(), lr=train_params["learning_rate"])
+    optimizer = optim.Adam(m.parameters(), lr=train_params["learning_rate"])
 
     # Do training
     for epoch_idx in range(train_params["num_epochs"]):
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     parser.add_argument('--imagesize', type=int, default=30)
     parser.add_argument('--batchsize', type=int, default=500)
     parser.add_argument('--numepochs', type=int, default=1000)
-    parser.add_argument('--lr', type=float, default=0.001)
+    parser.add_argument('--lr', type=float, default=0.1)
     args = parser.parse_args()
 
     # Use GPU or CPU

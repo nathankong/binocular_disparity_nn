@@ -7,8 +7,12 @@ source disp/bin/activate
 pip install -r requirements.txt
 ```
 
+### Image Directory
+The images must be organized in two sub-directories, where each directory is a specific class.
+Look at code in `code/make_dataset_dir.py` to see how the directory structure is organized.
+
 ### Run training with default parameters
-`python code/train_bnn.py`
+`python code/train_bnn.py --imagedir PATH/TO/IMAGES`
 
 ------
 #### TODOs
