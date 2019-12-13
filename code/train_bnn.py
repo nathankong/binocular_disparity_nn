@@ -150,7 +150,7 @@ if __name__ == "__main__":
     parser.add_argument('--image-size', type=int, default=30)
     parser.add_argument('--batch-size', type=int, default=200)
     parser.add_argument('--num-epochs', type=int, default=1000)
-    parser.add_argument('--lr', type=float, default=0.001)
+    parser.add_argument('--lr', type=float, default=0.0001)
     parser.add_argument('--init-gabors', dest='init_gabors', action='store_true')
     parser.set_defaults(init_gabor=False)
     args = parser.parse_args()
