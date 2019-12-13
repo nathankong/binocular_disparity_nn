@@ -7,7 +7,7 @@ import torch.optim as optim
 torch.manual_seed(0)
 
 from model import BinocularNetwork
-from utils import acquire_data_loaders, compute_accuracy
+from utils import acquire_data_loaders, compute_num_correct, print_update
 
 def train_step(
     model,
@@ -36,17 +36,9 @@ def train_step(
         loss.backward()
         optimizer.step()
 
-        ## DEBUG MODE
-        #print(model.simple_unit[0].weight.grad.size(), model.simple_unit[0].weight.grad)
-        #print(model.simple_unit[0].bias.grad.size(), model.simple_unit[0].bias.grad)
-        #print(model.complex_unit[0].weight.grad)
-        #print(predictions)
-
-        # TODO: CLEAN THIS UP LATER (RENAME THE FUNCTION)
-        accuracy = compute_accuracy(
+        accuracy = compute_num_correct(
             predictions,
-            labels,
-            data.shape[0]
+            labels
         )
 
         losses.append(loss.item())
@@ -68,11 +60,9 @@ def val_or_test_step(model, loader, loss_func, device):
             predictions = model(data)
             loss = loss_func(predictions, labels)
 
-            # TODO: CLEAN THIS UP LATER (RENAME THE FUNCTION)
-            accuracy = compute_accuracy(
+            accuracy = compute_num_correct(
                 predictions,
-                labels,
-                data.shape[0]
+                labels
             )
 
             losses.append(loss.item())
@@ -93,17 +83,17 @@ def train(train_params, device, verbose=True):
         n_filters=train_params["num_kernels"],
         k_size=train_params["kernel_size"],
         input_size=train_params["img_size"],
-        init_gabors=True
+        init_gabors=train_params["init_gabors"]
     ).to(device)
 
     # Loss function
-    #loss_func = nn.CrossEntropyLoss(reduction="sum")
+    loss_func = nn.CrossEntropyLoss(reduction="sum")
     #loss_func = nn.BCELoss(reduction="sum")
-    loss_func = nn.NLLLoss(reduction="sum")
+    #loss_func = nn.NLLLoss(reduction="sum")
 
     # Optimizer
-    #optimizer = optim.SGD(m.parameters(), lr=train_params["learning_rate"])
-    optimizer = optim.Adam(m.parameters(), lr=train_params["learning_rate"])
+    optimizer = optim.SGD(m.parameters(), lr=train_params["learning_rate"])
+    #optimizer = optim.Adam(m.parameters(), lr=train_params["learning_rate"])
 
     # Do training
     for epoch_idx in range(train_params["num_epochs"]):
@@ -115,55 +105,54 @@ def train(train_params, device, verbose=True):
             loss_func,
             device
         )
+        avg_loss = np.sum(train_losses) / total_samples
+        acc = np.sum(correct) / total_samples
 
         if verbose:
-            print("[Epoch {}/{}] Train Loss: {:.6f}; Acc.: {:.6f}"\
-                .format(
-                    epoch_idx+1,
-                    train_params["num_epochs"],
-                    np.sum(train_losses) / total_samples, np.sum(correct) / total_samples
-                )
-            )
+            print_update("Train", avg_loss, acc, epoch_idx, train_params["num_epochs"])
 
-        # Validation step every 10 epochs
+        # Validation step every epoch
+        val_losses, correct, total_samples = val_or_test_step(
+            m,
+            val_loader,
+            loss_func,
+            device
+        )
+        avg_loss = np.sum(val_losses) / total_samples
+        acc = np.sum(correct) / total_samples
+
+        if verbose:
+            print_update("Validation", avg_loss, acc, epoch_idx, train_params["num_epochs"])
+
+        # Test step every 10 epochs
         if (epoch_idx+1) % 10 == 0:
-            val_losses, correct, total_samples = val_or_test_step(
+            test_losses, correct, total_samples = val_or_test_step(
                 m,
-                val_loader,
+                test_loader,
                 loss_func,
                 device
             )
-
+            avg_loss = np.sum(test_losses) / total_samples
+            acc = np.sum(correct) / total_samples
+    
             if verbose:
-                print("[Epoch {}/{}] Test Loss: {:.6f}; Acc.: {:.6f}"\
-                    .format(
-                        epoch_idx+1,
-                        train_params["num_epochs"],
-                        np.sum(val_losses) / total_samples, np.sum(correct) / total_samples
-                    )
-                )
-
-        sys.stdout.flush()
-
-        # Test step (TODO)
-        # ...
-        # ...
-        # ...
-        #
+                print_update("Test", avg_loss, acc, epoch_idx, train_params["num_epochs"])
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
     default_dataset_dir = "/mnt/fs5/nclkong/datasets/bnn_dataset/"
-    parser.add_argument('--imagedir', type=str, default=default_dataset_dir)
+    parser.add_argument('--image-dir', type=str, default=default_dataset_dir)
     parser.add_argument('--cuda', type=int, default=0)
-    parser.add_argument('--numkernels', type=int, default=28)
-    parser.add_argument('--kernelsize', type=int, default=19)
-    parser.add_argument('--imagesize', type=int, default=30)
-    parser.add_argument('--batchsize', type=int, default=500)
-    parser.add_argument('--numepochs', type=int, default=1000)
-    parser.add_argument('--lr', type=float, default=0.1)
+    parser.add_argument('--num-kernels', type=int, default=28)
+    parser.add_argument('--kernel-size', type=int, default=19)
+    parser.add_argument('--image-size', type=int, default=30)
+    parser.add_argument('--batch-size', type=int, default=200)
+    parser.add_argument('--num-epochs', type=int, default=1000)
+    parser.add_argument('--lr', type=float, default=0.001)
+    parser.add_argument('--init-gabors', dest='init_gabors', action='store_true')
+    parser.set_defaults(init_gabor=False)
     args = parser.parse_args()
 
     # Use GPU or CPU
@@ -176,13 +165,15 @@ if __name__ == "__main__":
 
     # Training parameters
     train_params = dict()
-    train_params["image_dir"] = args.imagedir.lower()
-    train_params["num_kernels"] = int(args.numkernels)
-    train_params["kernel_size"] = int(args.kernelsize)
-    train_params["img_size"] = int(args.imagesize)
-    train_params["batch_size"] = int(args.batchsize)
-    train_params["num_epochs"] = int(args.numepochs)
-    train_params["learning_rate"] = int(args.lr)
+    train_params["image_dir"] = args.image_dir.lower()
+    train_params["num_kernels"] = int(args.num_kernels)
+    train_params["kernel_size"] = int(args.kernel_size)
+    train_params["img_size"] = int(args.image_size)
+    train_params["batch_size"] = int(args.batch_size)
+    train_params["num_epochs"] = int(args.num_epochs)
+    train_params["learning_rate"] = float(args.lr)
+    train_params["init_gabors"] = args.init_gabors
+    print "Training parameters:", train_params
 
     # Do the training
     train(train_params, device)

@@ -1,3 +1,4 @@
+import sys
 import numpy as np
 
 import torch
@@ -69,13 +70,22 @@ def acquire_data_loaders(
 
     return train_data_loader, test_data_loader, val_data_loader
 
-def compute_accuracy(predictions, labels, total_samples):
+def compute_num_correct(predictions, labels):
     # Predictions and labels should be on the same torch.device and
     # are of type torch.Tensor. total_samples should be a float.
 
     preds = predictions.argmax(dim=1, keepdim=True)
     correct = preds.eq(labels.view_as(preds)).sum().item()
-    return correct# / float(total_samples)
+    return correct
+
+def print_update(dataset_type, loss, accuracy, epoch_idx, total_epochs):
+    assert dataset_type.lower() in ["train", "test", "validation"]
+
+    print(
+        "[Epoch {}/{}] {} Loss: {:.6f}; {} Accuracy: {:.6f}"\
+            .format(epoch_idx+1, total_epochs, dataset_type, loss, dataset_type, accuracy)
+    )
+    sys.stdout.flush()
 
 if __name__ == "__main__":
     im_dir = "/mnt/fs5/nclkong/datasets/bnn_dataset/"
@@ -89,15 +99,15 @@ if __name__ == "__main__":
 
     tr, te, va = acquire_data_loaders(im_dir, batch_size, device)
 
-    #for i, (data, label) in enumerate(tr):
-    #    print "Train batch {}/{}: {} {}".format(i+1, len(tr), data.size(), label.size())
+    for i, (data, label) in enumerate(tr):
+        print "Train batch {}/{}: {} {}".format(i+1, len(tr), data.size(), label.size())
 
     for i, (data, label) in enumerate(te):
         print "Test batch {}/{}: {} {}".format(i+1, len(te), data.size(), label.size())
         print label
         assert 0
 
-    #for i, (data, label) in enumerate(va):
-    #    print "Val batch {}/{}: {} {}".format(i+1, len(va), data.size(), label.size())
+    for i, (data, label) in enumerate(va):
+        print "Val batch {}/{}: {} {}".format(i+1, len(va), data.size(), label.size())
 
 

@@ -6,6 +6,8 @@ import torch.nn as nn
 class BinocularNetwork(nn.Module):
     def __init__(self, n_filters=28, k_size=19, input_size=30, init_gabors=False):
         super(BinocularNetwork, self).__init__()
+        assert k_size % 2 == 1, "Kernel/filter size must be odd!"
+
         self.n_filters = n_filters
         self.k_size = k_size
         self.input_size = input_size
@@ -27,30 +29,30 @@ class BinocularNetwork(nn.Module):
         self.complex_unit = nn.Sequential(
             nn.Linear(n_units, 2, bias=True)
         )
-        self.log_softmax = torch.nn.LogSoftmax(dim=1)
+        #self.log_softmax = torch.nn.LogSoftmax(dim=1)
 
         if not init_gabors:
-            self.simple_unit.apply(self.init_weights)
+            print "Random initialization for simple units."
+            self.simple_unit.apply(self._init_weights)
         else:
             print "Initialize Gabors for simple units."
-            self.simple_unit.apply(self.init_gabors)
+            self.simple_unit.apply(self._init_gabors)
 
-        print "Initialize complex units."
-        #self.complex_unit.apply(self.init_zeros)
-        self.complex_unit.apply(self.init_weights)
+        print "Initialize complex units with zeros."
+        self.complex_unit.apply(self._init_zeros)
 
-    def init_weights(self, m):
+    def _init_weights(self, m):
         if type(m) == nn.Conv2d or type(m) == nn.Linear:
             print m
             nn.init.xavier_uniform_(m.weight)
 
-    def init_zeros(self, m):
+    def _init_zeros(self, m):
         if type(m) == nn.Linear:
             print m
             m.weight.data.fill_(0.)
             m.bias.data.fill_(0.)
 
-    def init_gabors(self, m):
+    def _init_gabors(self, m):
         if type(m) == nn.Conv2d:
             print m
             # Initialize weights as Gabor RFs with zero-disparity preference, as per Goncalves and Welchman.
@@ -69,7 +71,6 @@ class BinocularNetwork(nn.Module):
                 k[i, 0, :, :] = k[i, 0, :, :] / np.sum(np.fabs(k[i, 0, :, :]))
                 k[i, 1, :, :] = k[i, 0, :, :]
                 i += 1
-
             np.save("initial_kernels.npy", k)
 
             m.weight = torch.nn.Parameter(torch.from_numpy(k).float(), requires_grad=True)
@@ -79,7 +80,6 @@ class BinocularNetwork(nn.Module):
         x = self.simple_unit(x)
         x = torch.flatten(x, start_dim=1) 
         x = self.complex_unit(x)
-        x = self.log_softmax(x)
         return x
 
 if __name__ == "__main__":
