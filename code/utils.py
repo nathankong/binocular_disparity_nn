@@ -70,6 +70,12 @@ def acquire_data_loaders(
 
     return train_data_loader, test_data_loader, val_data_loader
 
+def record_weights(model, simple_unit_list, complex_unit_list):
+    # Saves weights/filters into the two lists. This utility function
+    # is specific to the BinocularNetwork defined in code/model.py
+    simple_unit_list.append(model.simple_unit[0].weight.data.cpu().numpy())
+    complex_unit_list.append(model.complex_unit[0].weight.data.cpu().numpy())
+
 def compute_num_correct(predictions, labels):
     # Predictions and labels should be on the same torch.device and
     # are of type torch.Tensor. total_samples should be a float.

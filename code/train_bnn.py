@@ -1,4 +1,5 @@
 import sys
+import pickle
 import numpy as np
 
 import torch
@@ -6,8 +7,14 @@ import torch.nn as nn
 import torch.optim as optim
 torch.manual_seed(0)
 
+from collections import defaultdict
+
 from model import BinocularNetwork
-from utils import acquire_data_loaders, compute_num_correct, print_update
+from utils import \
+    acquire_data_loaders, \
+    compute_num_correct, \
+    print_update, \
+    record_weights
 
 def train_step(
     model,
@@ -70,7 +77,7 @@ def val_or_test_step(model, loader, loss_func, device):
 
     return losses, accuracies, total_samples
 
-def train(train_params, device, verbose=True):
+def train(train_params, exp_id, device, verbose=True):
     # Data loaders
     train_loader, test_loader, val_loader = acquire_data_loaders(
         train_params["image_dir"],
@@ -96,7 +103,12 @@ def train(train_params, device, verbose=True):
     #optimizer = optim.Adam(m.parameters(), lr=train_params["learning_rate"])
 
     # Do training
+    all_losses = defaultdict(list)
+    all_accuracies = defaultdict(list)
+    simple_unit_filters = list()
+    complex_unit_weights = list()
     for epoch_idx in range(train_params["num_epochs"]):
+        record_weights(m, simple_unit_filters, complex_unit_weights)
         # Train step
         train_losses, correct, total_samples = train_step(
             m,
@@ -107,6 +119,8 @@ def train(train_params, device, verbose=True):
         )
         avg_loss = np.sum(train_losses) / total_samples
         acc = np.sum(correct) / total_samples
+        all_losses["train"].append(avg_loss)
+        all_accuracies["train"].append(acc)
 
         if verbose:
             print_update("Train", avg_loss, acc, epoch_idx, train_params["num_epochs"])
@@ -120,6 +134,8 @@ def train(train_params, device, verbose=True):
         )
         avg_loss = np.sum(val_losses) / total_samples
         acc = np.sum(correct) / total_samples
+        all_losses["validation"].append(avg_loss)
+        all_accuracies["validation"].append(acc)
 
         if verbose:
             print_update("Validation", avg_loss, acc, epoch_idx, train_params["num_epochs"])
@@ -134,9 +150,20 @@ def train(train_params, device, verbose=True):
             )
             avg_loss = np.sum(test_losses) / total_samples
             acc = np.sum(correct) / total_samples
+            all_losses["test"].append(avg_loss)
+            all_accuracies["test"].append(acc)
     
             if verbose:
                 print_update("Test", avg_loss, acc, epoch_idx, train_params["num_epochs"])
+
+    results = dict()
+    results["losses"] = all_losses
+    results["accuracies"] = all_accuracies
+    results["simple_unit_weights"] = simple_unit_filters
+    results["complex_unit_weights"] = complex_unit_weights
+    results["train_params"] = train_params
+    results_fname = "results/results_{}.pkl".format(exp_id)
+    pickle.dump(results, open(results_fname, "wb"))
 
 if __name__ == "__main__":
     import argparse
@@ -149,9 +176,10 @@ if __name__ == "__main__":
     parser.add_argument('--kernel-size', type=int, default=19)
     parser.add_argument('--image-size', type=int, default=30)
     parser.add_argument('--batch-size', type=int, default=200)
-    parser.add_argument('--num-epochs', type=int, default=1000)
+    parser.add_argument('--num-epochs', type=int, default=11)
     parser.add_argument('--lr', type=float, default=0.0001)
     parser.add_argument('--init-gabors', type=bool, default=False)
+    parser.add_argument('--exp-id', type=str, default="test")
     args = parser.parse_args()
 
     # Use GPU or CPU
@@ -161,6 +189,10 @@ if __name__ == "__main__":
     else:
         device = torch.device("cpu")
     print "Device:", device
+
+    # Experiment ID
+    exp_id = args.exp_id
+    print "Experiment ID:", exp_id
 
     # Training parameters
     train_params = dict()
@@ -175,6 +207,6 @@ if __name__ == "__main__":
     print "Training parameters:", train_params
 
     # Do the training
-    train(train_params, device)
+    train(train_params, exp_id, device)
 
 
