@@ -84,10 +84,25 @@ class BinocularNetwork(nn.Module):
         return x
 
 if __name__ == "__main__":
-    m = BinocularNetwork()
+    if torch.cuda.is_available():
+        device = torch.device("cuda:0")
+    else:
+        device = torch.device("cpu")
+    print "Device:", device
+
+    m = BinocularNetwork().to(device)
     t = torch.rand(5,2,30,30)
-    q = m(t)
+    q = m(t.to(device))
     print q.size()
     print q
 
+    print m.simple_unit[0].weight
 
+    from torch.autograd import Variable
+    a = torch.rand(5,2, requires_grad=True).to(device)
+    print a
+    a = Variable(torch.rand(5,2).to(device), requires_grad=True)
+    print a
+    a = torch.rand(5,2, device=device, requires_grad=True)
+    print a
+    
